@@ -32,7 +32,7 @@ bookRouter.post('/api/v1/books', jsonParser, (request, response) => {
     })
     .then((newBook) => {
       logger.log(logger.INFO, `BOOK-ROUTER POST:  a new book was saved: ${JSON.stringify(newBook)}`);
-      return response.json(newBook);
+      return response.json(newBook).status(200);
     })
     .catch((err) => {
       // we will hit here if we have some misc. mongodb error or parsing id error
@@ -47,32 +47,60 @@ bookRouter.get('/api/v1/books/:id?', (request, response) => {
 
   // TODO:
   // if (!request.params.id) do logic here to return an array of all resources, else do the logic below
-
+  if (!request.params.id) {
+    return Book.find()
+      .then((books) => {
+        return response.json(books).status(200);
+      })
+      .catch((err) => {
+        return mongoDbErrResponse(err, request, response, 'BOOK-ROUTER');
+      });
+  }
   return Book.findOne({ _id: request.params.id })
-    .then((note) => {
-      if (!note) {
-        logger.log(logger.INFO, 'BOOK-ROUTER GET /api/v1/books/:id: responding with 404 status code for no note found');
+    .then((book) => {
+      if (!book) {
+        logger.log(logger.INFO, 'BOOK-ROUTER GET /api/v1/books/:id: responding with 404 status code for no book found');
         return response.sendStatus(404);
       }
       logger.log(logger.INFO, 'BOOK-ROUTER GET /api/v1/books/:id: responding with 200 status code for successful get');
-      return response.json(note);
+      return response.json(book);
     })
     .catch((err) => {
       // we will hit here if we have a mongodb error or parsing id error
-      if (err.message.toLowerCase().includes('cast to objectid failed')) {
-        logger.log(logger.ERROR, `BOOK-ROUTER PUT: responding with 404 status code to mongdb error, objectId ${request.params.id} failed`);
-        return response.sendStatus(404);
-      }
+      return mongoDbErrResponse(err, request, response, 'BOOK-ROUTER');
+      // if (err.message.toLowerCase().includes('cast to objectid failed')) {
+      //   logger.log(logger.ERROR, `BOOK-ROUTER PUT: responding with 404 status code to mongdb error, objectId ${request.params.id} failed`);
+      //   return response.sendStatus(404);
+      // }
 
-      // if we hit here, something else not accounted for occurred
-      logger.log(logger.ERROR, `BOOK-ROUTER GET: 500 status code for unaccounted error ${JSON.stringify(err)}`);
-      return response.sendStatus(500);
+      // // if we hit here, something else not accounted for occurred
+      // logger.log(logger.ERROR, `BOOK-ROUTER GET: 500 status code for unaccounted error ${JSON.stringify(err)}`);
+      // return response.sendStatus(500);
     });
 });
 
 bookRouter.put('/api/v1/books/:id?', jsonParser, (request, response) => {
   if (!request.params.id) {
-    logger.log(logger.INFO, 'BOOK-ROUTER PUT /api/v1/books: Responding with a 400 error code for no id passed in');
+    logger.log(logger.ERROR, 'BOOK-ROUTER PUT /api/v1/books: Responding with a 400 error code for no id passed in');
+    return response.sendStatus(400);
+  }
+  
+  if (Object.keys(request.body).length === 0) { // empty body
+    logger.log(logger.ERROR, 'BOOK-ROUTER PUT /api/v1/books: Responsding with a 400 status for no body sent');
+    return response.sendStatus(400);
+  }
+
+  const schemaKeys = Object.keys(Book.schema.paths);
+  const requestKeys = Object.keys(request.body);
+  let badBodyKeys = false;
+  for (let i = 0; i < requestKeys.length; i += 1) {
+    if (!schemaKeys.includes(requestKeys[i])) {
+      badBodyKeys = true;
+      break;
+    }
+  }
+  if (badBodyKeys) {
+    logger.log(logger.ERROR, 'BOOK-ROUTER PUT /api/v1/books: Responsding with a 400 status for invalid keys on body.');
     return response.sendStatus(400);
   }
 
@@ -82,18 +110,41 @@ bookRouter.put('/api/v1/books/:id?', jsonParser, (request, response) => {
     runValidators: true,
   };
 
+
   Book.init()
     .then(() => {
       return Book.findByIdAndUpdate(request.params.id, request.body, options);
     })
     .then((updatedBook) => {
-      logger.log(logger.INFO, `BOOK-ROUTER PUT - responding with a 200 status code for successful updated book: ${JSON.stringify(updatedBook)}`);
-      return response.json(updatedBook);
+      if (updatedBook) {
+        logger.log(logger.INFO, `BOOK-ROUTER PUT - responding with a 200 status code for successful updated book: ${JSON.stringify(updatedBook)}`);
+        return response.json(updatedBook);
+      }
+      // updatedBook === null --> schema unique restriction violoated
+      logger.log(logger.ERROR, 'BOOK-ROUTER PUT - responding with 409 due to schema unique requirements violation');
+      return response.sendStatus(409);
     })
     .catch((err) => {
       // we will hit here if we have some misc. mongodb error or parsing id error
       return mongoDbErrResponse(err, request, response, 'BOOK-ROUTER');
     });
+  return undefined;
+});
+
+bookRouter.delete('/api/v1/books/:id?', (request, response) => {
+  if (!request.params.id) {
+    logger.log(logger.INFO, 'BOOK-ROUTER DELETE /api/v1/books: DELETE request missing book id. Status 400 returned.');
+    return response.sendStatus(400);
+  }
+
+  Book.findByIdAndRemove(request.params.id)
+    .then((result) => {
+      response.sendStatus((result ? 204 : 404));
+    })
+    .catch((err) => {
+      throw err;
+    });
+
   return undefined;
 });
 

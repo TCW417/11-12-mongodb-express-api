@@ -7,7 +7,7 @@
     "dev-start": "nodemon index.js",
     "test": "eslint . && jest --coverage --detectOpenHandles --forceExit --runInBand",
     "testWatch": "jest --coverage --watchAll",
-    "test-nolint": "jest --coverage --detectOpenHandles --forceExit --runInBand",
+    "tests": "jest --coverage --detectOpenHandles --forceExit --runInBand",
     "lint": "eslint .",
     "dbon": "mkdir -p ./db && mongod --dbpath ./db",
     "dboff": "killall mongod",
