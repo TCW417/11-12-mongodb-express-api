@@ -1,81 +1,115 @@
 ![cf](https://i.imgur.com/7v5ASc8.png) 11: Single Resource Express API
 ======
 
-## Submission Instructions
-* Read this document entirely and estimate how long this assignment will take.
-* Work in a fork of this repository
-* Work in a branch on your fork called `lab-11`
-* Set up Travis CI to your forked repo
-* **A deployed Heroku URL is not due until Lab 12, but you should start working on deployment for this lab now** 
-* Create a pull request from your lab branch branch to your `master` branch
-* Open a pull request to this repository
-* Submit on canvas a question and observation,your original estimate, how long you spent, and a link to your pull request
+[![Build Status](https://travis-ci.org/TCW417/11-12-mongodb-express-api.svg?branch=master)](https://travis-ci.org/TCW417/11-12-mongodb-express-api)
 
+The BOOKS api provides an interface to a database of books. Think of it as your personal reading list.  Books have, at a minimum, title and author properties, with an optional description.
 
-## Learning Objectives
-* students will be able to create a single resource API using the express framework with MongoDB
-* students will be able to leverage 3rd party helper modules for debugging, logging, and handling errors
+MongoDB is used to provide persistent storage for books data.
 
-## Requirements
-For this assignment you will be building a RESTful HTTP server using Express and MongoDB.
+## The API
+### GET api/v1/books[/id]
 
-### Configuration
-Configure the root of your repository with the following files and directories. Thoughfully name and organize any aditional configuration or module files.
-* **README.md** - contains documentation
-* **.env** - contains env variables **(should be git ignored)**
-* **.gitignore** - contains a [robust](http://gitignore.io) `.gitignore` file
-* **.eslintrc.json** - contains the course linter configuratoin
-* **.eslintignore** - contains the course linter ignore configuration
-* **package.json** - contains npm package config
-  * create a `test` script for running tests
-  * create `dbon` and `dboff` scripts for managing the mongo daemon
-* **db/** - contains mongodb files **(should be git ignored)**
-* **lib/** - contains module definitions
-* **model/** - contains module definitions
-* **route/** - contains module definitions
-* **\_\_test\_\_/** - contains test modules
+Returns JSON string representing either a single book (/bookId) or array of books if no ID is provided. If the database is empty returns an empty array.
 
+Sample return, single object from ?id= query:
+```
+{
+    "_id": "5b318e3555a74c8526bbffea",
+    "title": "The Name of the Wind",
+    "author": "Patrick Rothfuss",
+    "description": "Book 1 of an epic fantasy series.",
+    "createdOn": "2018-06-26T00:52:05.458Z",
+    "__v": 0
+}
+```
+Sample return from GET call to path with title=, author= or no query:
+```
+[
+    {
+        "_id": "5b318dc655a74c8526bbffe9",
+        "title": "Lonesome Dove",
+        "author": "Larry McMurtry",
+        "description": "The best book ever. At least the best western ever.",
+        "createdOn": "2018-06-26T00:50:14.148Z",
+        "__v": 0
+    },
+    {
+        "_id": "5b318e3555a74c8526bbffea",
+        "title": "The Name of the Wind",
+        "author": "Patrick Rothfuss",
+        "description": "Book 1 of an epic fantasy series.",
+        "createdOn": "2018-06-26T00:52:05.458Z",
+        "__v": 0
+    }
+]
+```
+Returns status 200 on success, 404 if book ID is not found.
 
-#### Model
-In the model/ directory create a Model for a resource using Mongoose (that is different from the class lecture resource). The model must include 4 properties, two of which should be required.
+### POST api/vi/books
 
-#### Server Endpoints
-Create the following routes for performing CRUD opperations on your resource. The [Mongoose docs](http://mongoosejs.com/docs/api.html#Model) will be your best friend in researching the correct methods you need to use to properly create, read, update, and destroy a resource in the Mongo database. 
-* DONE: `POST /api/<resource-name>`
-  * pass data as stringifed JSON in the body of a **POST** request to create a new resource
-  * on success respond with a 200 status code and the created note
-  * on failure due to a bad request, send a 400 status code
-  * on failure due to a duplicate request, send a 409 status code
-* DONE `GET /api/<resource-name>` and `GET /api/<resource-name>/:id`
-  * with no id in the query string it should respond with an array of all of your resources
-  * with an id in the query string it should respond with the details of a specifc resource (as JSON)
-  * on failure if the id is not found, respond with a 404
-* DONE `DELETE /api/<resource-name>/:id`
-  * the route should delete a resource with the given id
-  * on success this should return a 204 status code with no content in the body
-  * on failure due to lack of id in the query, respond with a 400 status code
-  * on failure due to the id and resource not existing, respond with a 404 status code
+Creates a new book and adds it to the database.
 
+This route requires a valid book object as a JSON string in the body of the message. For example:
+```
+{
+    "title":"test title",
+    "author":"test author"
+}
+```
+or
+```
+{
+    "title":"test title",
+    "author":"test author",
+    "description":"This is a description of the book"
+}
+```
+Returns status 200 and the full book object, including _id and createdOn properties, as JSON on success. On success the body of the return includes _id and createdOn properties, as:
+```
+{
+    "_id": "5b318dc655a74c8526bbffe9",
+    "title": "Lonesome Dove",
+    "author": "Larry McMurtry",
+    "description": "The best book ever. At least the best western ever.",
+    "createdOn": "2018-06-26T00:50:14.148Z",
+    "__v": 0
+},
+```
+Returns 400 if no title and/or author are provided. These are required values.
 
-## Tests
-* Write tests to ensure the `/api/resource-name` endpoint responds as described for each condition below:
-* `GET`: test 200, it should contain a response body for a request made with a valid id
-* `GET`: test 404, for  requests made with an id that was not found
-* `POST`: test 200, it should respond with the body content for a post request with a valid body
-* `POST`: test 400, if no request body was provided or the body was invalid
-* `DELETE`: test 204, it should respond with this status code for successful deletion of a resource
-* `DELETE`: test 404, it should respond with this status code for a request made with an invalid id
+### PUT api/vi/books/Id
+This route updates an existing book. It requires a complete book object as a JSON string as the message body, INCLUDING the _id property, as it will use that _id to locate the resource being updated.
 
-## Bonus (up to 3 points)
-* `PUT /api/<resource-name>/:id`
-  * the route should update a resource with the given id
-  * DONE on success this should return a 200 status code with the newly updated body
-  * DONE on failure due to lack of id in the query, respond with a 400 status code
-  * DONE on failure due to passing in a property that does not exist on the schema or passing an empty body, respond with a 400 status code
-  * DONE on failure due to the id and resource not existing, respond with a 404 status code
-  * DONE on failure due to a duplicate request, send a 409 status code
-* Test your PUT route for a 409 status code, a 404 status code, and for the two different conditions listed above to get the 400 status codes (*no points offered for testing for successul 200 put request because that was already given in lecture code*)
+For example, if the following object is retrieved from a previous GET request
+```
+{
+    "_id": "5b318dc655a74c8526bbffe9",
+    "title": "Lonesome Dove",
+    "author": "Larry McMurtry",
+    "description": "The best book ever. At least the best western ever.",
+    "createdOn": "2018-06-26T00:50:14.148Z",
+    "__v": 0
+},
+```
+and then modified like this
+```
+{
+    "_id": "5b318dc655a74c8526bbffe9",
+    "title": "Lonesome Dove",
+    "author": "Larry McMurtry",
+    "description": "THE BEST BOOK EVER. SERIOUSLY, OF ALL TIME!!!! At least the best western ever.",
+    "createdOn": "2018-06-26T00:50:14.148Z",
+    "__v": 0
+},
+```
+the PUT call will succeed and return status 200 with the updated book object as the body of the reply.
 
+If the id isn't found, status 404 will be returned. 400 will be return if id is missing, if body is empty or if properties are in the request body that aren't in the Book schema (title, author, description).  Will return 409 if the title isn't unique.
 
-## Documentation
-Add your Travis badge to the top of your README. List all of your registered routes and describe their behavior. Describe what your resouce is. Imagine you are providing this API to other developers who need to research your API in order to use it. Describe how a developer should be able to make requests to your API. Refer to the [PokeAPI docs](https://pokeapi.co/docsv2/#resource-lists) for a good example to follow. 
+### DELETE api/v1/books/Id
+Deletes the book with the given Id. The Id would typically be taken from a previous GET call.  
+
+On success, returns staus 204.
+
+400 is returned if the book Id is not provided, 404 if the Id is not found.
