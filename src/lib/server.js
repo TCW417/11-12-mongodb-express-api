@@ -2,14 +2,23 @@
 
 import express from 'express';
 import mongoose from 'mongoose';
+import bodyParser from 'body-parser';
 import logger from './logger';
+import loggerMiddleware from './middleware/logger-middleware';
 import bookRouter from '../router/book-router';
+import errorMiddleware from './middleware/error-middleware';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 let server;
 
+app.use(loggerMiddleware);
+
+app.use(bodyParser.json());
+
 app.use(bookRouter);
+
+app.use(errorMiddleware);
 
 app.all('*', (request, response) => {
   logger.log(logger.INFO, 'SERVER: Returning a 404 from the catch-all/default route');

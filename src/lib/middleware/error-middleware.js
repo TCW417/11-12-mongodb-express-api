@@ -1,8 +1,14 @@
 'use strict';
 
-import logger from './logger';
+import logger from '../logger';
 
-const mongoDbErrResponse = (err, request, response, source) => {
+export default (err, request, response, next) => {
+  const source = 'ERROR Handler:';
+  if (err.status) {
+    logger.log(logger.ERROR, `${source} ${request.method}: responding with ${err.status} status code: ${err.message}`);
+    return response.sendStatus(err.status);
+  }
+
   if (err.message.toLowerCase().includes('cast to objectid failed')) {
     logger.log(logger.ERROR, `${source} ${request.method}: responding with 404 status code to mongdb error, objectId ${request.params.id} failed, ${err.message}`);
     return response.sendStatus(404);
@@ -21,7 +27,6 @@ const mongoDbErrResponse = (err, request, response, source) => {
 
   // if we hit here, something else not accounted for occurred
   logger.log(logger.ERROR, `${source} ${request.method}: 500 status code for unaccounted error ${JSON.stringify(err)}`);
+  next(); // should just return...
   return response.sendStatus(500); // Internal Server Error
 };
-
-export default mongoDbErrResponse;

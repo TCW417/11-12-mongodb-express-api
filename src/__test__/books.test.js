@@ -227,23 +227,18 @@ describe('PUT request to /api/v1/books', () => {
     return createBookMockPromise()
       .then((book) => {
         book1 = book;
-        createBookMockPromise()
-          .then((nextBook) => {
-            book2 = nextBook;
-          })
-          .then(() => {
-            return superagent.put(`${apiUrl}/${book1._id}`)
-              .send({ title: book2.title, description: 'duplicate title!' })
-              .then((result) => {
-                throw result;
-              })
-              .catch((err) => {
-                expect(err.status).toEqual(409);
-              });
-          })
-          .catch((err) => {
-            throw err;
-          });
+        return createBookMockPromise();
+      })
+      .then((nextBook) => {
+        book2 = nextBook;
+        return superagent.put(`${apiUrl}/${book1._id}`)
+          .send({ title: book2.title, description: 'duplicate title!' });
+      })
+      .then((result) => {
+        throw result;
+      })
+      .catch((err) => {
+        expect(err.status).toEqual(409);
       });
   });
 });
