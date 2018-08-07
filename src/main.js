@@ -1,5 +1,9 @@
 'use strict';
 
+import { createDbTable } from './model/book';
 import { startServer } from './lib/server';
 
-startServer();
+createDbTable()
+  .then(() => {
+    startServer();
+  });
